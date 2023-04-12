@@ -1,13 +1,14 @@
 import json
-
 import paho.mqtt.client as mqtt
 
 
+# connecting to client and subscribing to all topics in /weather/
 def on_connect(client, userdata, flags, rc):
     print('Connected with result code ' + str(rc))
     client.subscribe('/weather/#')
 
 
+# parsing incoming messages via dictionary for output
 def on_message(client, userdata, msg):
     message_json = msg.payload.decode('utf8')  # extracts json from binary string
     content_dict = json.loads(message_json)  # converts to dictonary
@@ -22,6 +23,7 @@ def on_message(client, userdata, msg):
     )
 
 
+# setup for connection
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
