@@ -59,27 +59,11 @@ def yeetContent(content, fred):
         die.append(msg.value["pDie"])
 
 
-
-
-fredList.append(threading.Thread(target=runKafkaBullshit, kwargs={"conNr": 1}))
-
-
-
-for freds in fredList:
-    freds.start()
-
-'''
-
 for i in range(1, 10):
     fredList.append(threading.Thread(target=runKafkaBullshit, kwargs={"conNr": i}))
 
-cons = create_consumer(1)
-
-for message in cons:
-    print(message)
-    current = dateutil.parser.parse(message.value["dat"])
-    print(current)
-'''
+for freds in fredList:
+    freds.start()
 
 
 
