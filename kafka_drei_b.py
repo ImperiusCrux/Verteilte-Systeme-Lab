@@ -1,5 +1,6 @@
 from datetime import datetime
 from datetime import timedelta
+from statistics import mean
 import dateutil.parser
 import kafka
 import json
@@ -22,6 +23,7 @@ def create_consumer(partition_nr):
 
 
 fredList = []
+
 
 def runKafkaBullshit(conNr=int):
     cons = create_consumer(conNr)
@@ -49,6 +51,7 @@ def containsBullshit(message):
     else:
         return False
 
+
 def yeetContent(content, fred):
     e5 = []
     e10 = []
@@ -58,6 +61,17 @@ def yeetContent(content, fred):
         e10.append(msg.value["pE10"])
         die.append(msg.value["pDie"])
 
+    e5av = mean(e5)
+    # blub db Aufruf( plzBereich = fred, e5Average = e5av ...)
+
+'''
+    content:
+    message { value={'pE5': 1.819, 'pE10': 1.759, 'dat': '2023-01-01T09:25:07.000+00:00',
+    'stat': '2c21b856-4850-0952-e100-00000630df04', 'plz': '12249', 'pDie': 1.889} }
+
+'''
+
+    #Anknüpfung an DB
 
 for i in range(1, 10):
     fredList.append(threading.Thread(target=runKafkaBullshit, kwargs={"conNr": i}))
