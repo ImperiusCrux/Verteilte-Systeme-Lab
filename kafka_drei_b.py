@@ -31,7 +31,7 @@ write_api = db_write_client.write_api(write_options=SYNCHRONOUS)
 
 topic = "tankerkoenig"
 
-
+# creating consumer with variable partition nr
 def create_consumer(partition_nr):
     consumer = kafka.KafkaConsumer(
         bootstrap_servers=['10.50.15.52:9092'],
@@ -45,34 +45,36 @@ def create_consumer(partition_nr):
 
 fredList = []
 
-
-def runKafkaBullshit(conNr=int):
+# 1 function call per thread. Gets itself a consumer and parses incoming messages by partition and time into list
+def runPartyConsumer(conNr=int):
     cons = create_consumer(conNr)
     check = None
     contentList = []
     for message in cons:
-        if not containsBullshit(message):
+        # check for null values
+        if not containsNone(message):
+            # getting time value of first message as check
             current = dateutil.parser.parse(message.value["dat"])
             if check is None:
                 check = current
+            # checking if time in incoming messages has passed 1 hour to create bundle of 1 hour
             if check + timedelta(hours=1) <= current:
+                # giving content to db and resetting timer
                 yeetContent(contentList, conNr)
                 contentList = []
                 check = dateutil.parser.parse(message.value["dat"])
             contentList.append(message.value)
 
 
-# value={'pE5': 1.819, 'pE10': 1.759, 'dat': '2023-01-01T09:25:07.000+00:00',
-# 'stat': '2c21b856-4850-0952-e100-00000630df04', 'plz': '12249', 'pDie': 1.889}
-
-
-def containsBullshit(message):
+# helper function to check for empty fields
+def containsNone(message):
     if message.value["dat"] is None or message.value["pE5"] is None or message.value["pE10"] is None or message.value["stat"] is None or message.value["plz"] is None or message.value["pDie"] is None:
         return True
     else:
         return False
 
 
+# extracting fuel prices of message bundle, calculating average and passing values to db
 def yeetContent(content, fred):
     e5 = []
     e10 = []
@@ -111,9 +113,9 @@ def yeetContent(content, fred):
     time.sleep(1)
 
 
-
+# creates threads for each partition and runs threads
 for i in range(10):
-    fredList.append(threading.Thread(target=runKafkaBullshit, kwargs={"conNr": i}))
+    fredList.append(threading.Thread(target=runPartyConsumer(), kwargs={"conNr": i}))
 
 for freds in fredList:
     freds.start()
