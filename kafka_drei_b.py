@@ -5,8 +5,29 @@ import dateutil.parser
 import kafka
 import json
 import threading
-import dateutil as du
-import pandas as pd
+
+
+
+# Imports für InfluxDB
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client.client.write_api import SYNCHRONOUS
+import influxdb_client, os, time
+
+#-----------------------------------------------------------------------------------------------------------
+# Konfigurationen der Zeitseriendatenbank InfluxDB, in welche die Daten geschreiben werden
+#-----------------------------------------------------------------------------------------------------------
+
+# InfluxDB (Time Series DB) Informationen, um in die DB zu schreiben
+INFLUXDB_TOKEN = "a2j0fmPdCjj_XSlInYq_aShClRn87gSEGBJVZJIfSpBcdOspujHiMfDHFVipVglU4FcS7z7HaavTPBzfKHZ6nA=="
+INFLUXDB_ORG = "DHBW_RoccNStone"
+INFLUXDB_URL = "http://localhost:8086"
+# Name der Datenbank/Bucket, in welches die Daten geschrieben werden
+INFLUXDB_BUCKET = "Tankerkoenig"
+# Initialisiern des Clients, um in influxDB zu schreiben
+db_write_client = influxdb_client.InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
+# Definieren der API zum schreiben der Daten
+write_api = db_write_client.write_api(write_options=SYNCHRONOUS)
+
 
 topic = "tankerkoenig"
 
@@ -57,72 +78,45 @@ def yeetContent(content, fred):
     e10 = []
     die = []
     for msg in content:
-        e5.append(msg.value["pE5"])
-        e10.append(msg.value["pE10"])
-        die.append(msg.value["pDie"])
+        e5.append(msg["pE5"])
+        e10.append(msg["pE10"])
+        die.append(msg["pDie"])
 
+    # Berechenen der Mittelwerte
     e5av = mean(e5)
-    # blub db Aufruf( plzBereich = fred, e5Average = e5av ...)
+    e10av = mean(e10)
+    dieav = mean(die)
 
-'''
-    content:
-    message { value={'pE5': 1.819, 'pE10': 1.759, 'dat': '2023-01-01T09:25:07.000+00:00',
-    'stat': '2c21b856-4850-0952-e100-00000630df04', 'plz': '12249', 'pDie': 1.889} }
+    plz = msg["plz"][0]
 
-'''
+    # Datum und Zeit als String
+    date_string = msg["dat"]
+    print(date_string)
+    # Das Datum und die Zeit parsen
+    date_time = datetime.fromisoformat(date_string)
+    # Unix-Zeit (in Nanosekunden)
+    timestamp = int(date_time.timestamp() * 1e9)
 
-    #Anknüpfung an DB
+    # Datenbank-Eintrag erstellen
+    data_point = influxdb_client.Point("Spritpreis"). \
+        tag("plz", plz). \
+        field("Avg-E5", e5av). \
+        field("Avg-E10",  e10av). \
+        field("Avg-Diesel", dieav).\
+        time(timestamp)
 
-for i in range(1, 10):
+
+    # Eintrag in DB schreiben
+    write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=data_point)
+    time.sleep(1)
+
+
+
+for i in range(10):
     fredList.append(threading.Thread(target=runKafkaBullshit, kwargs={"conNr": i}))
 
 for freds in fredList:
     freds.start()
 
-
-
-'''
-def create_df(value):
-    df = pd.Series(value)
-    print(df)
-    return df
-
-
-
-
-
-def structure_data(consumer):
-    # erst checken ob iwas NUll ist
-    tank_dict = {'pE5': [],
-                 'pE10': [],
-                 'dat': [],
-                 'stat': [],
-                 'plz': [],
-                 'pDie': []}
-
-    # erst checken ob iwas NUll ist
-    msg = next(consumer)
-
-    for key, value in msg.value.items():
-        tank_dict[key].append(value)
-
-    first_timestamp = datetime.strptime(tank_dict["dat"][-1], "%Y-%m-%dT%H:%M:%S.%f%z")
-    last_timestamp = datetime.strptime(tank_dict["dat"][0], "%Y-%m-%dT%H:%M:%S.%f%z")
-    time_difference = first_timestamp-last_timestamp
-
-    if time_difference.total_seconds() <= 3600:
-        print("Die Dauer ist kleiner als eine Stunde.")
-    #     msg = next(consumer)
-   #     print("Die Dauer ist kleiner als eine Stunde.")
-   #     dict.update(msg.value)
-    #    print(dict)
-   # else:
-        # Aggregation pro Preiskategorie
-     #   return
-    return
-
-
-structure_data(consumer_list[0])
-'''
 
 
